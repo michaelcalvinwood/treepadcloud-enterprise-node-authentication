@@ -122,7 +122,20 @@ const insertUser = async (userName, email, password) => {
 }
 
 const treePadMessage = (res, msg) => {
-    res.redirect(`https://message.treepadcloud.com/?msg=${encodeURIComponent(JSON.stringify(msg))}`)
+    let html = `
+        <div style="width: 100%; max-width: 1200px; margin-auto">
+            <h1 style="text-align: center">${msg.title}</h1>
+            <p style="padding: 0 2rem;">${msg.msg}</p>
+    `
+    if (msg.button) {
+        html += `<a href="${msg.button.url}" style="text-decoration: none; color: white; background-color: #3880ff; padding: .25rem .5rem; margin: auto; display:block; width: fit-content; border-radius: 4px; text-align: center">${msg.button.title}</a>`
+    }
+
+    html += '</div>';
+
+    console.log(html);
+
+    res.status(200).send(html);
 }
 
 const verifyEmail = async (params, res) => {
@@ -151,7 +164,11 @@ const verifyEmail = async (params, res) => {
             if (Date.now() >= exp * 1000) {
                 let message = {
                     title: 'Email Verification Error',
-                    msg: 'Token has expired. Please register again at <a href="https://login.treepadcloud.com">TreePad Cloud</a>.'
+                    msg: 'Token has expired. Please register again.',
+                    button: {
+                        title: "Register",
+                        url: 'https://login.treepadcloud.com'
+                    }
                 }
                 return treePadMessage(res, message);
             }
@@ -165,15 +182,19 @@ const verifyEmail = async (params, res) => {
                 let message = {
                     title: "Email Verification Error",
                     msg: e.code === 'ER_DUP_ENTRY' ?
-                        `User ${userName} is already verified.  You may now login to <a href="https://login.treepadcloud.com>TreePad Cloud</a>.` :
-                        `Could not add user ${userName} into the database. Please try again later.`
+                        `User ${userName} is already verified.  You may now login to TreePad Cloud.` :
+                        `Could not add user ${userName} into the database. Please try again later.`,
+                    button: {
+                        title: "Login",
+                        url: 'https://login.treepadcloud.com'
+                    }
                 };
                 return treePadMessage(res, message);
             }
 
             treePadMessage(res, {
                 title: 'Email Verification Success',
-                msg: 'Thank you for verifying your email address. You may now login to <a href="https://login.treepadcloud.com>TreePad Cloud</a>.'
+                msg: 'Thank you for verifying your email address. You may now login to <a href="https://login.treepadcloud.com">TreePad Cloud</a>.'
             })
         }
         
