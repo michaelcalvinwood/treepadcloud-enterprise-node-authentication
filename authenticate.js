@@ -1,4 +1,5 @@
 const mysql = require('./utils/mysql');
+const { v4: uuidv4 } = require('uuid');
 
 const createLoginTable = async () => {
     const q = `CREATE TABLE IF NOT EXISTS login(
@@ -15,8 +16,10 @@ const createLoginTable = async () => {
     return mysql.query(q);
 }
 
+const uuid = () => uuidv4();
+
 const launchService = async () => {
-    console.log('launchService');
+    console.log('launchService', uuid());
 
     await createLoginTable();
 }
@@ -26,4 +29,4 @@ let waitId = setInterval(() => {
         clearInterval(waitId);
         launchService();
     }
-}, 1000);
+}, 250);
