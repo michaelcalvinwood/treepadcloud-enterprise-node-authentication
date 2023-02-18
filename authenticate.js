@@ -6,6 +6,7 @@ const hostname = 'authentication.treepadcloud.com'
 const privateKeyPath = `/etc/letsencrypt/live/${hostname}/privkey.pem`;
 const fullchainPath = `/etc/letsencrypt/live/${hostname}/fullchain.pem`;
 const zxcvbn = require('zxcvbn');
+const emailValidator = require("email-validator");
 
 /*
  * Packages
@@ -56,13 +57,14 @@ app.get('/', (req, res) => {
 app.post('/register', (req, res) => {
     const { userName, password, email } = req.body;
 
-    if (!userName || !password || !email ) return res.status(400).json({msg: 'missing parameter'});
+    if (!userName || !password || !email ) return res.status(400).json({errno: 1, msg: 'missing parameter'});
 
     const strength = zxcvbn(password).score;
 
-    if (strength < 3) return res.status(400).json({msg: 'weak password'});
+    if (strength < 3) return res.status(400).json({errno: 2, msg: 'weak password'});
 
-    
+    if (!emailValidator.validate(email)) return res.status(400).json({errno: 3, msg: 'invalid email address'});
+
 })
 
 const httpsServer = https.createServer({
