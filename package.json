@@ -1,0 +1,16 @@
+{
+  "name": "treepadcloud-enterprise-node-authentication",
+  "version": "1.0.0",
+  "description": "",
+  "main": "authenticate.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michael Wood",
+  "license": "SEE LICENSE IN license.md",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "mysql": "^2.18.1"
+  }
+}
