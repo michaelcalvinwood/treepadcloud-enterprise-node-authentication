@@ -5,8 +5,7 @@ const listenPort = 6200;
 const hostname = 'authentication.treepadcloud.com'
 const privateKeyPath = `/etc/letsencrypt/live/${hostname}/privkey.pem`;
 const fullchainPath = `/etc/letsencrypt/live/${hostname}/fullchain.pem`;
-const zxcvbn = require('zxcvbn');
-const emailValidator = require("email-validator");
+
 
 /*
  * Packages
@@ -17,6 +16,9 @@ const express = require('express');
 const https = require('https');
 const cors = require('cors');
 const fs = require('fs');
+const zxcvbn = require('zxcvbn');
+const emailValidator = require("email-validator");
+const jwt = require('jsonwebtoken');
 
 /*
  * Utils
@@ -51,6 +53,27 @@ async function sleep(seconds) {
     return new Promise((resolve) =>setTimeout(resolve, seconds * 1000));
 }
 
+const sendEmailVerification = async (email, token) => {
+    const sender = 'admin@appgalleria.com';
+    const senderName = "AppGalleria";
+    const subject = "TreePad Cloud Email Verification";
+    const message = `
+    <p>Thank you for subscribing to TreePad Cloud</p>
+    <p>Pleave visit the following link to verify your email address: <a href='https://authentication.treepadcloud.com:6200/verify-email?token=${token}'>TreePad Email Verification</a></p>
+    <p>With Regards,</p>
+    <p>The TreePad Cloud Team</p>`;
+    
+    let emailResult = false;
+    try {
+        emailResult = await email.sendEmaiViaSMTPcom(email, sender, subject, message, senderName);
+        emailResult = true;
+    } catch (e) {
+        console.log(e);
+    }
+
+    return emailResult;
+}
+
 const registerUser = async (body, res) => {
     return new Promise (async (resolve, reject) => {
         const { userName, password, email } = body;
@@ -71,7 +94,13 @@ const registerUser = async (body, res) => {
             res.status(400).json({errno: 3, msg: 'invalid email address'});
             resolve('errno: 3');
         }
-    
+
+        let token = jwt.sign({
+            userName, email, password
+        }, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
+        
+        sendEmailVerification(email, token);
+       
         res.status(200).send('okay');
 
         console.log('sent okay');
@@ -110,5 +139,4 @@ let waitId = setInterval(() => {
     }
 }, 250);
 
-email.sendEmaiViaSMTPcom('michaelwood33311@icloud.com', 'admin@appgalleria.com', "Test email", "Hello <b>Michael</b>", "AppGalleria");
 
