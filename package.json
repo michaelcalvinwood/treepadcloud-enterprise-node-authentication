@@ -9,8 +9,11 @@
   "author": "Michael Wood",
   "license": "SEE LICENSE IN license.md",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "mysql": "^2.18.1"
+    "https": "^1.0.0",
+    "mysql": "^2.18.1",
+    "uuid": "^9.0.0"
   }
 }
