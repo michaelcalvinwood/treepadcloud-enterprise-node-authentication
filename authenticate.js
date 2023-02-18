@@ -36,6 +36,8 @@ app.use(express.static('public'));
 app.use(express.json({limit: '200mb'})); 
 app.use(cors());
 
+const uuid = () => uuidv4();
+
 const createLoginTable = async () => {
     const q = `CREATE TABLE IF NOT EXISTS login(
         user_id VARCHAR(40) NOT NULL,
@@ -55,8 +57,8 @@ async function sleep(seconds) {
 }
 
 const sendEmailVerification = async (email, token) => {
-    const sender = 'admin@appgalleria.com';
-    const senderName = "AppGalleria";
+    const sender = 'noreply@treepadcloud.com';
+    const senderName = "TreePad Cloud";
     const subject = "TreePad Cloud Email Verification";
     const message = `
     <p>Thank you for subscribing to TreePad Cloud</p>
@@ -109,11 +111,41 @@ const registerUser = async (body, res) => {
     })
 }
 
-const uuid = () => uuidv4();
+const insertUser = async (userName, email, password) => {
+    const q = `INSERT INTO login ()`;
+}
+
+const verifyEmail = async (params, res) => {
+    return new Promise((resolve, reject) => {
+        const { token } = params;
+        console.log(params);
+
+        if (!token) {
+            res.status(400).json({status: 'error', errno: 1, msg: 'Error: missing token'});
+        } else {
+            
+            if (!jwt.verify(token, process.env.JWT_SECRET_KEY)) return res.status(403).json({ error: "Not Authorized." });
+    
+            const info = jwt.decode(token);
+
+            const { userName, email, password } = info;
+
+
+
+            res.status(200).json({status: 'success', info});
+        }
+        
+        resolve('ok');
+    });
+}
+
+
 
 app.get('/', (req, res) => res.send('Hello, Authentication!'));
 
 app.post('/register', (req, res) => registerUser(req.body, res));
+
+app.get('/verify-email', (req, res) => verifyEmail(req.query, res));
 
 const httpsServer = https.createServer({
     key: fs.readFileSync(privateKeyPath),

@@ -13,7 +13,7 @@ const client = mailgun.client({username: 'api', key: process.env.MAIL_GUN_API_KE
       from: `${senderName} <${sender}>`,
       to: email,
       subject,
-      html: msg
+      html: message
     };
     
     let result = null;
