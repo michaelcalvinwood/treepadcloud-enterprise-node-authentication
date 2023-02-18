@@ -25,7 +25,8 @@ const jwt = require('jsonwebtoken');
  */
 
 const mysql = require('./utils/mysql');
-const email = require('./utils/smtpCom');
+//const smtp = require('./utils/smtpCom');
+const smtp = require('./utils/mailGun');
 /*
  * Code
  */
@@ -65,7 +66,7 @@ const sendEmailVerification = async (email, token) => {
     
     let emailResult = false;
     try {
-        emailResult = await email.sendEmaiViaSMTPcom(email, sender, subject, message, senderName);
+        emailResult = await smtp.sendEmailViaMailGun(email, sender, subject, message, senderName);
         emailResult = true;
     } catch (e) {
         console.log(e);
@@ -79,19 +80,19 @@ const registerUser = async (body, res) => {
         const { userName, password, email } = body;
 
         if (!userName || !password || !email )  {
-            res.status(400).json({errno: 1, msg: 'missing parameter'});
+            res.status(400).json({status: 'error', errno: 1, msg: 'missing parameter'});
             resolve('errno: 1');
         }
     
         const strength = zxcvbn(password).score;
     
         if (strength < 3) {
-            res.status(400).json({errno: 2, msg: 'weak password'});
+            res.status(400).json({status: 'error', errno: 2, msg: 'weak password'});
             resolve('errno: 2');
         }
     
         if (!emailValidator.validate(email)) {
-            res.status(400).json({errno: 3, msg: 'invalid email address'});
+            res.status(400).json({status: 'error', errno: 3, msg: 'invalid email address'});
             resolve('errno: 3');
         }
 
@@ -99,14 +100,12 @@ const registerUser = async (body, res) => {
             userName, email, password
         }, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
         
-        sendEmailVerification(email, token);
+        let emailResult = sendEmailVerification(email, token);
        
-        res.status(200).send('okay');
-
-        console.log('sent okay');
+        if (emailResult) res.status(200).json({status: 'success'});
+        else res.status(401).json({status: 'error', errno: 4, msg: "failed to send verification email to " + email})
 
         resolve('okay');
-
     })
 }
 
