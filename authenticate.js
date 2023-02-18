@@ -1,14 +1,31 @@
-const mysql = require('./utils/mysql');
-const { v4: uuidv4 } = require('uuid');
+/* 
+ * Configuration
+ */
 const listenPort = 6200;
 const hostname = 'authentication.treepadcloud.com'
 const privateKeyPath = `/etc/letsencrypt/live/${hostname}/privkey.pem`;
 const fullchainPath = `/etc/letsencrypt/live/${hostname}/fullchain.pem`;
+const zxcvbn = require('zxcvbn');
 
+/*
+ * Packages
+ */
+
+const { v4: uuidv4 } = require('uuid');
 const express = require('express');
 const https = require('https');
 const cors = require('cors');
 const fs = require('fs');
+
+/*
+ * Utils
+ */
+
+const mysql = require('./utils/mysql');
+
+/*
+ * Code
+ */
 
 const app = express();
 app.use(express.static('public'));
@@ -39,7 +56,11 @@ app.get('/', (req, res) => {
 app.post('/register', (req, res) => {
     const { userName, password, email } = req.body;
 
-    if (!userName || !password || !email ) return res.status(400).send('missing parameter');
+    if (!userName || !password || !email ) return res.status(400).json({msg: 'missing parameter'});
+
+    const strength = zxcvbn(password).score;
+
+    if (strength < 3) return res.status(400).json({msg: 'weak password'});
 
     
 })
