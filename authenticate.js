@@ -19,6 +19,7 @@ const fs = require('fs');
 const zxcvbn = require('zxcvbn');
 const emailValidator = require("email-validator");
 const jwt = require('jsonwebtoken');
+const bcrypt = require("bcrypt");
 
 /*
  * Utils
@@ -112,34 +113,73 @@ const registerUser = async (body, res) => {
 }
 
 const insertUser = async (userName, email, password) => {
-    const q = `INSERT INTO login ()`;
+    userId = 'u-' + uuid();
+    hash = bcrypt.hashSync(password, 10);
+
+    const q = `INSERT INTO login (user_id, user_name, email, password) VALUES ('${userId}', ${mysql.escape(userName)}, ${mysql.escape(email)}, ${mysql.escape(hash)})`;
+
+    return mysql.query(q);
+}
+
+const treePadMessage = (res, msg) => {
+    res.redirect(`https://message.treepadcloud.com/?msg=${encodeURIComponent(JSON.stringify(msg))}`)
 }
 
 const verifyEmail = async (params, res) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         const { token } = params;
         console.log(params);
 
         if (!token) {
-            res.status(400).json({status: 'error', errno: 1, msg: 'Error: missing token'});
+            return treePadMessage(res, {
+                title: "Email Verification Error",
+                msg: "Missing token."
+            })
         } else {
             
-            if (!jwt.verify(token, process.env.JWT_SECRET_KEY)) return res.status(403).json({ error: "Not Authorized." });
-    
+            if (!jwt.verify(token, process.env.JWT_SECRET_KEY)) {
+                let message = {
+                    title: 'Email Verification Error',
+                    msg: 'Token is invalid'
+                }
+                return treePadMessage (res, message);
+            } 
             const info = jwt.decode(token);
 
-            const { userName, email, password } = info;
+            const { userName, email, password, exp } = info;
 
+            if (Date.now() >= exp * 1000) {
+                let message = {
+                    title: 'Email Verification Error',
+                    msg: 'Token has expired. Please register again at <a href="https://login.treepadcloud.com">TreePad Cloud</a>.'
+                }
+                return treePadMessage(res, message);
+            }
 
+            let result = null;
 
-            res.status(200).json({status: 'success', info});
+            try {
+                result = await insertUser(userName, email, password);
+            } catch (e) {
+                if (e.code !== 'ER_DUP_ENTRY') console.error(e);
+                let message = {
+                    title: "Email Verification Error",
+                    msg: e.code === 'ER_DUP_ENTRY' ?
+                        `User ${userName} is already verified.  You may now login to <a href="https://login.treepadcloud.com>TreePad Cloud</a>.` :
+                        `Could not add user ${userName} into the database. Please try again later.`
+                };
+                return treePadMessage(res, message);
+            }
+
+            treePadMessage(res, {
+                title: 'Email Verification Success',
+                msg: 'Thank you for verifying your email address. You may now login to <a href="https://login.treepadcloud.com>TreePad Cloud</a>.'
+            })
         }
         
         resolve('ok');
     });
 }
-
-
 
 app.get('/', (req, res) => res.send('Hello, Authentication!'));
 

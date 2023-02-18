@@ -9,6 +9,7 @@ const pool = mysqlDb.createPool({
   database: process.env.MYSQL_DATABASE
 });
 
+exports.escape = str => pool.escape(str);
 exports.sqlReady = false;
 exports.mysql = mysqlDb;
 
