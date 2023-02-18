@@ -32,10 +32,17 @@ const createLoginTable = async () => {
 
 const uuid = () => uuidv4();
 
-
 app.get('/', (req, res) => {
     res.send('Hello, Authentication!');
 });
+
+app.post('/register', (req, res) => {
+    const { userName, password, email } = req.body;
+
+    if (!userName || !password || !email ) return res.status(400).send('missing parameter');
+
+    
+})
 
 const httpsServer = https.createServer({
     key: fs.readFileSync(privateKeyPath),
