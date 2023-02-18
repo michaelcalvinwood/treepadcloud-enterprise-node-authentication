@@ -23,7 +23,7 @@ const fs = require('fs');
  */
 
 const mysql = require('./utils/mysql');
-
+const email = require('./utils/smtpCom');
 /*
  * Code
  */
@@ -39,7 +39,6 @@ const createLoginTable = async () => {
         user_name VARCHAR(512) NOT NULL,
         email VARCHAR(325) NOT NULL,
         password VARCHAR(512) NOT NULL,
-        token VARCHAR(40000) NOT NULL,
         PRIMARY KEY (user_id),
         UNIQUE KEY (user_name),
         UNIQUE KEY (email)
@@ -48,24 +47,45 @@ const createLoginTable = async () => {
     return mysql.query(q);
 }
 
+async function sleep(seconds) {
+    return new Promise((resolve) =>setTimeout(resolve, seconds * 1000));
+}
+
+const registerUser = async (body, res) => {
+    return new Promise (async (resolve, reject) => {
+        const { userName, password, email } = body;
+
+        if (!userName || !password || !email )  {
+            res.status(400).json({errno: 1, msg: 'missing parameter'});
+            resolve('errno: 1');
+        }
+    
+        const strength = zxcvbn(password).score;
+    
+        if (strength < 3) {
+            res.status(400).json({errno: 2, msg: 'weak password'});
+            resolve('errno: 2');
+        }
+    
+        if (!emailValidator.validate(email)) {
+            res.status(400).json({errno: 3, msg: 'invalid email address'});
+            resolve('errno: 3');
+        }
+    
+        res.status(200).send('okay');
+
+        console.log('sent okay');
+
+        resolve('okay');
+
+    })
+}
+
 const uuid = () => uuidv4();
 
-app.get('/', (req, res) => {
-    res.send('Hello, Authentication!');
-});
+app.get('/', (req, res) => res.send('Hello, Authentication!'));
 
-app.post('/register', (req, res) => {
-    const { userName, password, email } = req.body;
-
-    if (!userName || !password || !email ) return res.status(400).json({errno: 1, msg: 'missing parameter'});
-
-    const strength = zxcvbn(password).score;
-
-    if (strength < 3) return res.status(400).json({errno: 2, msg: 'weak password'});
-
-    if (!emailValidator.validate(email)) return res.status(400).json({errno: 3, msg: 'invalid email address'});
-
-})
+app.post('/register', (req, res) => registerUser(req.body, res));
 
 const httpsServer = https.createServer({
     key: fs.readFileSync(privateKeyPath),
@@ -76,8 +96,6 @@ const httpsServer = https.createServer({
   httpsServer.listen(listenPort, () => {
     console.log(`HTTPS Server running on port ${listenPort}`);
 });
-
-
 
 const launchService = async () => {
     console.log('launchService', uuid());
@@ -91,3 +109,6 @@ let waitId = setInterval(() => {
         launchService();
     }
 }, 250);
+
+email.sendEmaiViaSMTPcom('michaelwood33311@icloud.com', 'admin@appgalleria.com', "Test email", "Hello <b>Michael</b>", "AppGalleria");
+
