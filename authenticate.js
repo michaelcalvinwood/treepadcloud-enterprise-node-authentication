@@ -3,8 +3,8 @@
  */
 const listenPort = 6200;
 const hostname = 'authentication.treepadcloud.com'
-const privateKeyPath = `/etc/letsencrypt/live/${hostname}/privkey.pem`;
-const fullchainPath = `/etc/letsencrypt/live/${hostname}/fullchain.pem`;
+const privateKeyPath = `/etc/letsencrypt/live/treepadcloud.com/privkey.pem`;
+const fullchainPath = `/etc/letsencrypt/live/treepadcloud.com/fullchain.pem`;
 
 
 /*
@@ -38,6 +38,18 @@ app.use(express.json({limit: '200mb'}));
 app.use(cors());
 
 const uuid = () => uuidv4();
+
+const isValidHostName = name => {
+    if (!name) return false;
+    
+    if (name.startsWith('-')) return false;
+    if (name.endsWith('-')) return false;
+
+    let test = name.indexOf('--');
+    if (test !== -1) return false;
+
+    return (/^[a-zA-Z0-9-]{1,63}$/.test(name))
+}
 
 const createLoginTable = async () => {
     const q = `CREATE TABLE IF NOT EXISTS login(
@@ -87,6 +99,9 @@ const registerUser = async (body, res) => {
             resolve('errno: 1');
         }
     
+        /*
+         * Validate Password Strength
+         */
         const strength = zxcvbn(password).score;
     
         if (strength < 3) {
@@ -94,11 +109,22 @@ const registerUser = async (body, res) => {
             resolve('errno: 2');
         }
     
+        /*
+         * Validate Format of Email Address
+         */
         if (!emailValidator.validate(email)) {
             res.status(400).json({status: 'error', errno: 3, msg: 'invalid email address'});
             resolve('errno: 3');
         }
 
+        /*
+         * Validate that userName can be a host name
+         */
+        if (!isValidHostName(userName)) {
+            res.status(400).json({status: 'error', errno: 4, msg: 'invalid user name'});
+            resolve('errno: 3');
+        }
+        
         let token = jwt.sign({
             userName, email, password
         }, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
@@ -112,9 +138,11 @@ const registerUser = async (body, res) => {
     })
 }
 
+const bcryptHash = val => bcrypt.hashSync(val, 10);
+
 const insertUser = async (userName, email, password) => {
     userId = 'u-' + uuid();
-    hash = bcrypt.hashSync(password, 10);
+    hash = bcryptHash(password);
 
     const q = `INSERT INTO login (user_id, user_name, email, password) VALUES ('${userId}', ${mysql.escape(userName)}, ${mysql.escape(email)}, ${mysql.escape(hash)})`;
 
@@ -192,19 +220,41 @@ const verifyEmail = async (params, res) => {
                 return treePadMessage(res, message);
             }
 
-            treePadMessage(res, {
-                title: 'Email Verification Success',
-                msg: 'Thank you for verifying your email address. You may now login to <a href="https://login.treepadcloud.com">TreePad Cloud</a>.'
-            })
+            // treePadMessage(res, {
+            //     title: 'Email Verification Success',
+            //     msg: 'Thank you for verifying your email address. You may now login to TreePad Cloud.',
+            //     button: {
+            //         title: "Login",
+            //         url: 'https://login.treepadcloud.com'
+            //     }
+            // })
+
+            res.redirect('https://login.treepadcloud.com');
         }
         
         resolve('ok');
     });
 }
 
+const login = async (body, res) => {
+    return new Promise((resolve, reject) => {
+        const { userName, password } = body;
+
+        if (!userName || !password) {
+            return res.status(400).json({status: 'error', errno: 1, errmsg: 'missing parameters'});
+        }
+
+
+
+        resolve('okay');
+    })
+}
+
 app.get('/', (req, res) => res.send('Hello, Authentication!'));
 
 app.post('/register', (req, res) => registerUser(req.body, res));
+
+app.post('/login', (req, res) => login(req.body, res));
 
 app.get('/verify-email', (req, res) => verifyEmail(req.query, res));
 
