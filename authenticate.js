@@ -96,7 +96,7 @@ const registerUser = async (body, res) => {
 
         if (!userName || !password || !email )  {
             res.status(400).json({status: 'error', errno: 1, msg: 'missing parameter'});
-            resolve('errno: 1');
+            return resolve('errno: 1');
         }
     
         /*
@@ -106,7 +106,7 @@ const registerUser = async (body, res) => {
     
         if (strength < 3) {
             res.status(400).json({status: 'error', errno: 2, msg: 'weak password'});
-            resolve('errno: 2');
+            return resolve('errno: 2');
         }
     
         /*
@@ -114,7 +114,7 @@ const registerUser = async (body, res) => {
          */
         if (!emailValidator.validate(email)) {
             res.status(400).json({status: 'error', errno: 3, msg: 'invalid email address'});
-            resolve('errno: 3');
+            return resolve('errno: 3');
         }
 
         /*
@@ -122,19 +122,32 @@ const registerUser = async (body, res) => {
          */
         if (!isValidHostName(userName)) {
             res.status(400).json({status: 'error', errno: 4, msg: 'invalid user name'});
-            resolve('errno: 3');
+            return resolve('errno: 3');
+        }
+
+        /*
+         * Validate that the user name is not already taken
+         */
+        const q = `SELECT user_id FROM login WHERE user_name = ${mysql.escape(userName)}`;
+        let result = await mysql.query(q);
+        if (result.length) {
+            res.status(400).json({status: 'error', errno: 4, msg: 'user name already exists'});
+            return resolve('errno: 4');
         }
         
         let token = jwt.sign({
             userName, email, password
         }, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
-        
+
         let emailResult = sendEmailVerification(email, token);
        
-        if (emailResult) res.status(200).json({status: 'success'});
-        else res.status(401).json({status: 'error', errno: 4, msg: "failed to send verification email to " + email})
-
-        resolve('okay');
+        if (emailResult) {
+            res.status(200).json({status: 'success'});
+            return resolve('okay');
+        }
+        
+        res.status(401).json({status: 'error', errno: 5, msg: "failed to send verification email to " + email})
+        resolve('errno: 5');
     })
 }
 
@@ -150,6 +163,7 @@ const insertUser = async (userName, email, password) => {
 }
 
 const treePadMessage = (res, msg) => {
+    console.log('treePadMessage()');
     let html = `
         <div style="width: 100%; max-width: 1200px; margin-auto">
             <h1 style="text-align: center">${msg.title}</h1>
@@ -237,15 +251,37 @@ const verifyEmail = async (params, res) => {
 }
 
 const login = async (body, res) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         const { userName, password } = body;
 
         if (!userName || !password) {
-            return res.status(400).json({status: 'error', errno: 1, errmsg: 'missing parameters'});
+            res.status(400).json({status: 'error', errno: 1, msg: 'missing parameters'});
+            return resolve('errno: 1');
         }
 
+        const q = `SELECT password FROM login WHERE user_name = ${mysql.escape(userName)}`
+        let result = await mysql.query(q);
 
+        if (!result.length) {
+            res.status(400).json({status: 'error', errno: 2, msg: 'user name does not exist'});
+            return resolve('errno: 2');
+        }
 
+        let test = await bcrypt.compare(password, result[0].password);
+
+        if (!test) {
+            res.status(400).json({status: 'error', errno: 3, msg: 'incorrect password'});
+            return resolve('errno: 3');
+        }
+
+        let token = {};
+        token.info = {
+            userName
+        }
+
+        token.signed = jwt.sign(token.info, process.env.JWT_SECRET_KEY, {expiresIn: '7d'});
+
+        res.status(200).json(token);
         resolve('okay');
     })
 }
