@@ -57,6 +57,7 @@ const createLoginTable = async () => {
         user_name VARCHAR(512) NOT NULL,
         email VARCHAR(325) NOT NULL,
         password VARCHAR(512) NOT NULL,
+        forrest_server VARCHAR(512) NOT NULL,
         PRIMARY KEY (user_id),
         UNIQUE KEY (user_name),
         UNIQUE KEY (email)
@@ -81,7 +82,7 @@ const createAvailableServersTable = async () => {
 }
 
 const addForrestServer = async (hostname, numCpus, numUsers, status) => {
-    const q = `INSERT INTO available_servers 
+    const q = `INSERT IGNORE INTO available_servers 
     (hostname, num_cpus, num_users, status)
     VALUES('${hostname}', ${numCpus}, ${numUsers}, '${status}')`;
     
@@ -180,7 +181,16 @@ const insertUser = async (userName, email, password) => {
     userId = 'u-' + uuid();
     hash = bcryptHash(password);
 
-    const q = `INSERT INTO login (user_id, user_name, email, password) VALUES ('${userId}', ${mysql.escape(userName)}, ${mysql.escape(email)}, ${mysql.escape(hash)})`;
+    let q = 'SELECT * FROM available_servers WHERE status = "active"';
+
+    let info = await mysql.query(q);
+
+    console.log(info);
+    return;
+
+    q = `INSERT INTO login 
+    (user_id, user_name, email, password, forrest_server) 
+    VALUES ('${userId}', ${mysql.escape(userName)}, ${mysql.escape(email)}, ${mysql.escape(hash)}, '${forrestServer}')`;
 
     return mysql.query(q);
 }
@@ -214,8 +224,16 @@ const verifyEmail = async (params, res) => {
                 msg: "Missing token."
             })
         } else {
+
+            let tokenVerification = false;
+
+            try {
+                tokenVerification = jwt.verify(token, process.env.JWT_SECRET_KEY);
+            } catch (e) {
+                console.log(e);
+            }
             
-            if (!jwt.verify(token, process.env.JWT_SECRET_KEY)) {
+            if (!tokenVerification) {
                 let message = {
                     title: 'Email Verification Error',
                     msg: 'Token is invalid'
