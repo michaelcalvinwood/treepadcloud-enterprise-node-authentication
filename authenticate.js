@@ -67,16 +67,24 @@ const createLoginTable = async () => {
 
 const createAvailableServersTable = async () => {
     const q = `CREATE TABLE IF NOT EXISTS available_servers(
-        server_id VARCHAR(40) NOT NULL,
         hostname VARCHAR(512) NOT NULL,
         num_cpus INT(8) NOT NULL,
-        num_users INT(8) NOT NULL,
+        num_users INT(8) NOT NULL DEFAULT 0,
         status VARCHAR(128) NOT NULL DEFAULT 'active',
-        PRIMARY KEY (server_id),
-        UNIQUE KEY (hostname),
-        INDEX status
+        PRIMARY KEY (hostname),
+        INDEX (status)
     )`;
 
+    console.log(q);
+
+    return mysql.query(q);
+}
+
+const addForrestServer = async (hostname, numCpus, numUsers, status) => {
+    const q = `INSERT INTO available_servers 
+    (hostname, num_cpus, num_users, status)
+    VALUES('${hostname}', ${numCpus}, ${numUsers}, '${status}')`;
+    
     return mysql.query(q);
 }
 
@@ -324,6 +332,7 @@ const launchService = async () => {
 
     await createLoginTable();
     await createAvailableServersTable();
+    await addForrestServer('forrest-1.treepadcloud.com', 2, 0, 'active');
 }
 
 let waitId = setInterval(() => {
