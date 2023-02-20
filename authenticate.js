@@ -177,16 +177,41 @@ const registerUser = async (body, res) => {
 
 const bcryptHash = val => bcrypt.hashSync(val, 10);
 
-const insertUser = async (userName, email, password) => {
-    userId = 'u-' + uuid();
-    hash = bcryptHash(password);
-
+const getForrestServer = async () => {
     let q = 'SELECT * FROM available_servers WHERE status = "active"';
 
     let info = await mysql.query(q);
 
-    console.log(info);
-    return;
+    if (!info.length) return false;
+
+    let servers = info.map(server => {
+        let serverInfo = {
+            hostname: server.hostname,
+            usage: Number(server['num_users']) / Number(server['num_cpus'])
+        }
+        return serverInfo;
+    });
+
+    let usage = 100000000000;
+    let forrestServer = null;
+
+    for (let i = 0; i < servers.length; ++i) {
+        if (servers[i].usage < usage) {
+            usage = servers[i].usage;
+            forrestServer = servers[i].hostname;
+        }
+    }
+
+    return forrestServer;
+}
+
+const insertUser = async (userName, email, password) => {
+    userId = 'u-' + uuid();
+    hash = bcryptHash(password);
+
+    const forrestServer = await getForrestServer();
+
+    if (!forrestServer) throw new Error('No available forrest servers');
 
     q = `INSERT INTO login 
     (user_id, user_name, email, password, forrest_server) 
@@ -261,6 +286,7 @@ const verifyEmail = async (params, res) => {
             try {
                 result = await insertUser(userName, email, password);
             } catch (e) {
+                console.log(e);
                 if (e.code !== 'ER_DUP_ENTRY') console.error(e);
                 let message = {
                     title: "Email Verification Error",
@@ -275,16 +301,12 @@ const verifyEmail = async (params, res) => {
                 return treePadMessage(res, message);
             }
 
-            // treePadMessage(res, {
-            //     title: 'Email Verification Success',
-            //     msg: 'Thank you for verifying your email address. You may now login to TreePad Cloud.',
-            //     button: {
-            //         title: "Login",
-            //         url: 'https://login.treepadcloud.com'
-            //     }
-            // })
+            treePadMessage(res, {
+                title: 'Email Verification Success',
+                msg: 'Thank you for verifying your email address. You may now login to TreePad Cloud.',
+            });
 
-            res.redirect('https://login.treepadcloud.com');
+            //res.redirect('https://login.treepadcloud.com');
         }
         
         resolve('ok');
@@ -300,7 +322,7 @@ const login = async (body, res) => {
             return resolve('errno: 1');
         }
 
-        const q = `SELECT password FROM login WHERE user_name = ${mysql.escape(userName)}`
+        const q = `SELECT password, forrest_server FROM login WHERE user_name = ${mysql.escape(userName)}`
         let result = await mysql.query(q);
 
         if (!result.length) {
@@ -317,7 +339,8 @@ const login = async (body, res) => {
 
         let token = {};
         token.info = {
-            userName
+            userName,
+            forrestServer: result[0]['forrest_server']
         }
 
         token.signed = jwt.sign(token.info, process.env.JWT_SECRET_KEY, {expiresIn: '7d'});
@@ -351,6 +374,7 @@ const launchService = async () => {
     await createLoginTable();
     await createAvailableServersTable();
     await addForrestServer('forrest-1.treepadcloud.com', 2, 0, 'active');
+    
 }
 
 let waitId = setInterval(() => {
