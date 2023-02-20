@@ -65,6 +65,21 @@ const createLoginTable = async () => {
     return mysql.query(q);
 }
 
+const createAvailableServersTable = async () => {
+    const q = `CREATE TABLE IF NOT EXISTS available_servers(
+        server_id VARCHAR(40) NOT NULL,
+        hostname VARCHAR(512) NOT NULL,
+        num_cpus INT(8) NOT NULL,
+        num_users INT(8) NOT NULL,
+        status VARCHAR(128) NOT NULL DEFAULT 'active',
+        PRIMARY KEY (server_id),
+        UNIQUE KEY (hostname),
+        INDEX status
+    )`;
+
+    return mysql.query(q);
+}
+
 async function sleep(seconds) {
     return new Promise((resolve) =>setTimeout(resolve, seconds * 1000));
 }
@@ -308,6 +323,7 @@ const launchService = async () => {
     console.log('launchService', uuid());
 
     await createLoginTable();
+    await createAvailableServersTable();
 }
 
 let waitId = setInterval(() => {
