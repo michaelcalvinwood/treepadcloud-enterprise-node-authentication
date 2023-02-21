@@ -3,8 +3,8 @@
  */
 const listenPort = 6200;
 const hostname = 'authentication.treepadcloud.com'
-const privateKeyPath = `/etc/letsencrypt/live/treepadcloud.com/privkey.pem`;
-const fullchainPath = `/etc/letsencrypt/live/treepadcloud.com/fullchain.pem`;
+const privateKeyPath = `/home/keys/treepadcloud.com.key`;
+const fullchainPath = `/home/keys/treepadcloud.com.pem`;
 
 
 /*
@@ -69,6 +69,7 @@ const createLoginTable = async () => {
 const createAvailableServersTable = async () => {
     const q = `CREATE TABLE IF NOT EXISTS available_servers(
         hostname VARCHAR(512) NOT NULL,
+        ip VARCHAR(256) NOT NULL,
         num_cpus INT(8) NOT NULL,
         num_users INT(8) NOT NULL DEFAULT 0,
         status VARCHAR(128) NOT NULL DEFAULT 'active',
@@ -81,10 +82,10 @@ const createAvailableServersTable = async () => {
     return mysql.query(q);
 }
 
-const addForrestServer = async (hostname, numCpus, numUsers, status) => {
+const addForrestServer = async (hostname, ip, numCpus, numUsers, status) => {
     const q = `INSERT IGNORE INTO available_servers 
-    (hostname, num_cpus, num_users, status)
-    VALUES('${hostname}', ${numCpus}, ${numUsers}, '${status}')`;
+    (hostname, ip, num_cpus, num_users, status)
+    VALUES('${hostname}', '${ip}', ${numCpus}, ${numUsers}, '${status}')`;
     
     return mysql.query(q);
 }
@@ -373,7 +374,7 @@ const launchService = async () => {
 
     await createLoginTable();
     await createAvailableServersTable();
-    await addForrestServer('forrest-1.treepadcloud.com', 2, 0, 'active');
+    await addForrestServer('forrest-1.treepadcloud.com', '137.184.99.20', 2, 0, 'active');
     
 }
 
