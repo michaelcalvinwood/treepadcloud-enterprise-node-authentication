@@ -6,7 +6,6 @@ const hostname = 'authentication.treepadcloud.com'
 const privateKeyPath = `/home/keys/treepadcloud.com.key`;
 const fullchainPath = `/home/keys/treepadcloud.com.pem`;
 
-
 /*
  * Packages
  */
@@ -28,6 +27,8 @@ const bcrypt = require("bcrypt");
 const mysql = require('./utils/mysql');
 //const smtp = require('./utils/smtpCom');
 const smtp = require('./utils/mailGun');
+const dns = require('./utils/cloudDNS');
+
 /*
  * Code
  */
@@ -188,6 +189,7 @@ const getForrestServer = async () => {
     let servers = info.map(server => {
         let serverInfo = {
             hostname: server.hostname,
+            ip: server.ip,
             usage: Number(server['num_users']) / Number(server['num_cpus'])
         }
         return serverInfo;
@@ -199,10 +201,11 @@ const getForrestServer = async () => {
     for (let i = 0; i < servers.length; ++i) {
         if (servers[i].usage < usage) {
             usage = servers[i].usage;
-            forrestServer = servers[i].hostname;
+            forrestServer = servers[i].ip;
         }
     }
 
+    console.log('chosen server', forrestServer);
     return forrestServer;
 }
 
@@ -338,10 +341,26 @@ const login = async (body, res) => {
             return resolve('errno: 3');
         }
 
+        const forrestServer = result[0]['forrest_server'];
+
+        let record = await dns.getARecordIds('treepadcloud.com', userName);
+
+        console.log('record', record, typeof record);
+
+        // If record does not exist then create it. Else check to see if matches current forrest server. If not, update it.
+        // if (!record.length) {
+        //     let result = await dns.addARecord('treepadcloud.com', userName, forrestServer);
+        //     if (!result.status === 'Success') console.error (`DNS ERROR: Could not create A record for ${userName}.treepadcloud.com for ${forrestServer}`);
+        // } else {
+
+        // }
+
+        
+
         let token = {};
         token.info = {
             userName,
-            forrestServer: result[0]['forrest_server']
+            forrestServer
         }
 
         token.signed = jwt.sign(token.info, process.env.JWT_SECRET_KEY, {expiresIn: '7d'});
