@@ -348,12 +348,13 @@ const login = async (body, res) => {
         console.log('record', record, typeof record);
 
         // If record does not exist then create it. Else check to see if matches current forrest server. If not, update it.
-        // if (!record.length) {
-        //     let result = await dns.addARecord('treepadcloud.com', userName, forrestServer);
-        //     if (!result.status === 'Success') console.error (`DNS ERROR: Could not create A record for ${userName}.treepadcloud.com for ${forrestServer}`);
-        // } else {
-
-        // }
+        if (!Object.keys(record).length) {
+            let result = await dns.addARecord('treepadcloud.com', userName, forrestServer);
+            if (!result.status === 'Success') {
+                console.error (`DNS ERROR: Could not create A record for ${userName}.treepadcloud.com for ${forrestServer}`);
+                return res.status(400).send(`DNS ERROR: Could not create A record for ${userName}.treepadcloud.com for ${forrestServer}`);
+            }
+        }
 
         
 
