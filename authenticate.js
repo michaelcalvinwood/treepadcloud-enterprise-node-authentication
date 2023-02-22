@@ -347,12 +347,33 @@ const login = async (body, res) => {
 
         console.log('record', record, typeof record);
 
+        const recordKeys = Object.keys(record);
         // If record does not exist then create it. Else check to see if matches current forrest server. If not, update it.
-        if (!Object.keys(record).length) {
+        if (!recordKeys.length) {
             let result = await dns.addARecord('treepadcloud.com', userName, forrestServer);
             if (!result.status === 'Success') {
                 console.error (`DNS ERROR: Could not create A record for ${userName}.treepadcloud.com for ${forrestServer}`);
                 return res.status(400).send(`DNS ERROR: Could not create A record for ${userName}.treepadcloud.com for ${forrestServer}`);
+            }
+        } else {
+            for (let i = 0; i < recordKeys.length; ++i) {
+                const info = record[recordKeys[i]];
+                if (!info.id) continue;
+                const dnsIp = info.record;
+                // If the dns has an old IP address then update the record to the new one
+                if (dnsIp !== forrestServer) {
+                    let data = {
+                        host: userName,
+                        ttl: 900,
+                        record: forrestServer
+                    };
+                    data['domain-name'] = 'treepadcloud.com';
+                    data['record-id'] = info.id;
+
+                    let result = await dns.executeClouDnsPostRequest('/dns/mod-record.json', data);
+                    console.log(result);
+                }
+                break;
             }
         }
 

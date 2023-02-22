@@ -24,7 +24,7 @@ const executePostRequest = async (endpoint, data = {}) => {
     return response.data;
 }
 
-
+exports.executeClouDnsPostRequest = async (endpoint, data = {}) => executePostRequest(endpoint, data);
 
 const loginTest = async () => executePostRequest('/login/login.json');
 
